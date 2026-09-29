@@ -1,0 +1,21 @@
+NOTES.md
+  s_111dee8003d6be::t_54fe2e0bf82624 9-11,22-23,163-230,241-244,251
+tokenizer.json
+  s_111dee8003d6be::t_78fe006de68e08 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b9a669c317c3268fd0b1955ae207df53beb8a760",
+  "prompts": {},
+  "sessions": {
+    "s_111dee8003d6be": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed99-9cb9-75ab-9ba3-fcad45955438",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Faraj Farook <farajf@proton.me>"
+    }
+  }
+}
