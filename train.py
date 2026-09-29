@@ -184,6 +184,7 @@ if not args.resume:
 model.train()
 t_start = time.time()
 t0 = time.time()
+steps_since_log = 0
 it = start_iter
 try:
     for it in range(start_iter, args.max_iters + 1):
@@ -206,7 +207,7 @@ try:
             log_file.flush()
             if it == args.max_iters:
                 break
-            t0 = time.time()  # don't count eval time in the speed numbers
+            t0, steps_since_log = time.time(), 0  # don't count eval time in the speed numbers
 
         # --- one training step: forward -> backward -> step
         x, y = get_batch("train")
@@ -217,11 +218,12 @@ try:
         # scale it down so one step can't wreck the model
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()                 # 3. nudge all parameters
+        steps_since_log += 1
 
         # --- progress line
         if it % args.log_interval == 0:
-            dt = (time.time() - t0) / (args.log_interval if it > start_iter else 1)
-            t0 = time.time()
+            dt = (time.time() - t0) / steps_since_log
+            t0, steps_since_log = time.time(), 0
             done = it - start_iter + 1
             eta = (time.time() - t_start) / done * (args.max_iters - it)
             print(f"iter {it:5d} | loss {loss.item():.3f} | lr {lr:.2e} | "
