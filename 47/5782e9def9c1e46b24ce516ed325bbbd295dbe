@@ -1,0 +1,23 @@
+data/prepare.py
+  s_111dee8003d6be::t_3f73f4aa015890 1-96
+.gitignore
+  s_111dee8003d6be::t_49c98611c38a56 6
+train.py
+  s_111dee8003d6be::t_0810581e67f60f 73,195,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "475782e9def9c1e46b24ce516ed325bbbd295dbe",
+  "prompts": {},
+  "sessions": {
+    "s_111dee8003d6be": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed99-9cb9-75ab-9ba3-fcad45955438",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Faraj Farook <farajf@proton.me>"
+    }
+  }
+}
