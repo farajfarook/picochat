@@ -70,6 +70,7 @@ p.add_argument("--log_interval", type=int, default=10)
 p.add_argument("--eval_interval", type=int, default=250)
 p.add_argument("--eval_iters", type=int, default=20)     # batches used to estimate loss
 p.add_argument("--out", default="ckpt.pt")
+p.add_argument("--log", default="train_log.csv")
 p.add_argument("--resume", action="store_true")
 p.add_argument("--seed", type=int, default=1337)
 p.add_argument("--device", default="auto", help="auto | cpu | cuda")
@@ -191,7 +192,7 @@ def save(it):
 
 
 # ----------------------------------------------------------- the loop
-log_file = open("train_log.csv", "a", newline="")
+log_file = open(args.log, "a", newline="")
 log = csv.writer(log_file)
 if not args.resume:
     log.writerow(["iter", "train_loss", "val_loss", "lr"])
@@ -250,5 +251,5 @@ except KeyboardInterrupt:
     print("\nstopped by Ctrl+C")
 
 print(f"\ndone at iter {it} in {(time.time()-t_start)/60:.1f} min. best val loss {best_val:.3f}")
-print(f"best checkpoint: {args.out}   (log: train_log.csv)")
+print(f"best checkpoint: {args.out}   (log: {args.log})")
 log_file.close()

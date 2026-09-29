@@ -3,4 +3,4 @@ data/*.bin
 *.pt
 __pycache__/
 .venv/
-train_log.csv
+*.csv
