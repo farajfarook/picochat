@@ -129,6 +129,10 @@ x = x + MLP(LayerNorm(x))         # each token processes on its own (compute)
   can't cheat by looking at the answer.
 - **Multi-head**: 6 heads of size 64 run in parallel, each free to track a
   different relationship.
+  Nobody tells a head what to track. Every head starts random, and training
+  adjusts each one only in ways that improve next-token guesses. Specialisations
+  like "find the subject" can emerge because they help prediction. We can only
+  find out what each head does by inspecting a trained model.
 - **MLP**: expand ×4 → GELU → shrink. Per-token processing; stores much of the "knowledge".
 - **Residual (`x = x + ...`)**: layers add updates rather than replace, which keeps deep nets trainable.
 - **LayerNorm**: keeps the numbers in each vector at a sane scale.
