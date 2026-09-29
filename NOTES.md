@@ -16,8 +16,8 @@ Goal: build a tiny GPT-style language model from scratch, trainable on a CPU,
 |---|------|------|--------|
 | 1 | Project setup + dataset | `data/download.py` | ✅ done |
 | 2 | BPE tokenizer from scratch | `tokenizer.py` | ✅ done |
-| 3 | GPT model (hand-written attention) | `model.py` | ⏳ next |
-| 4 | Training loop on CPU | `train.py` | |
+| 3 | GPT model (hand-written attention) | `model.py` | ✅ done |
+| 4 | Training loop on CPU | `train.py` | ⏳ next |
 | 5 | Sampling / generation | `sample.py` | |
 
 Target model config (first run):
@@ -93,6 +93,67 @@ model on simple text, the params are better spent on transformer layers.
 
 ---
 
+## Step 3: GPT model
+
+Run: `python model.py` prints the param breakdown, the untrained loss, CPU
+speed, and a sample from the untrained model.
+
+### What a language model is
+A **next-token predictor**. Given tokens so far, output a probability for
+every one of the 4096 possible next tokens. To generate: pick one, append it, repeat.
+
+### The pipeline
+```
+token ids (T)
+ → token embedding + position embedding    (T, C)   id → vector, position → vector
+ → Block × 6                               (T, C)
+ → LayerNorm → lm_head                     (T, 4096) score per possible next token
+ → softmax                                 probabilities
+```
+
+### Inside a block
+```
+x = x + Attention(LayerNorm(x))   # tokens look at earlier tokens (communicate)
+x = x + MLP(LayerNorm(x))         # each token processes on its own (compute)
+```
+
+### Key ideas
+- **Embedding**: a lookup table from token id to a vector of 384 numbers. The
+  model learns these; similar words end up with similar vectors.
+- **Position embedding**: attention by itself has no notion of order, so we
+  add a learned "I am position 5" vector.
+- **Attention (q, k, v)**: each token emits a query ("what am I looking for"),
+  a key ("what I contain") and a value ("what I pass on"). score = q·k /
+  √head_size → softmax → weighted average of values.
+- **Causal mask**: a token can only see itself and earlier tokens, so it
+  can't cheat by looking at the answer.
+- **Multi-head**: 6 heads of size 64 run in parallel, each free to track a
+  different relationship.
+- **MLP**: expand ×4 → GELU → shrink. Per-token processing; stores much of the "knowledge".
+- **Residual (`x = x + ...`)**: layers add updates rather than replace, which keeps deep nets trainable.
+- **LayerNorm**: keeps the numbers in each vector at a sane scale.
+- **Weight tying**: input embedding and output layer share one matrix (saves 1.6M params).
+- **Cross-entropy loss**: −log(prob given to the correct next token).
+  Random guess = ln(4096) = **8.32**. Perfect = 0.
+- **Targets = inputs shifted by one**: one sequence of 256 tokens gives 256
+  training examples at once (predict token 1 from 0, token 2 from 0–1, ...).
+
+### Results
+| part | params |
+|---|---|
+| token embedding 4096×384 (shared with output) | 1.57M |
+| position embedding 256×384 | 0.10M |
+| per block (attn 4C² + MLP 8C²) | 1.77M |
+| 6 blocks | 10.6M |
+| **total** | **12.3M** |
+
+- Untrained loss **8.41** ≈ random 8.32, as expected.
+- CPU speed: ~**5,500 tokens/sec** in training, so one pass over 5M train tokens takes ~15 min.
+- Untrained output: `Once upon a time moved coming terrible what dropped something planist popcorn...`
+  These are real tokens picked at random; there's no grammar yet.
+
+---
+
 ## Glossary
 
 - **token**: an integer ID for a chunk of text (a byte, a subword, or a word)
@@ -100,6 +161,9 @@ model on simple text, the params are better spent on transformer layers.
 - **context / block_size**: how many tokens the model sees at once
 - **BPE**: byte-pair encoding, which builds a vocab by repeatedly merging frequent pairs
 - **special token**: a reserved id with meaning (e.g. end of story), never produced by merges
+- **logits**: raw scores per vocab token before softmax
+- **softmax**: turns scores into probabilities that sum to 1
+- **loss**: how wrong the model is; training = making this go down
 - **parameter**: a learned number (weight); the model size is the count of these
 
 ## Results log
