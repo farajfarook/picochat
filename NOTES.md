@@ -6,7 +6,9 @@ Goal: build a tiny GPT-style language model from scratch, trainable on a CPU,
 ## Setup
 
 - Machine: 16-core CPU, 61 GB RAM, no GPU
-- Python 3.14, PyTorch 2.12 (CPU), NumPy 2.5
+- GPU: RTX 3050 laptop (6 GB). Gaming rig has an RTX 3090 (24 GB)
+- Python 3.14, PyTorch with CUDA 12.6, NumPy 2.5, managed by **uv** in a local `.venv`
+  - setup: `uv sync`, then prefix every command with `uv run`
 - Approach: PyTorch for tensors + autograd; attention, transformer blocks,
   tokenizer and training loop written by hand (nanoGPT-style)
 
@@ -17,8 +19,8 @@ Goal: build a tiny GPT-style language model from scratch, trainable on a CPU,
 | 1 | Project setup + dataset | `data/download.py` | ✅ done |
 | 2 | BPE tokenizer from scratch | `tokenizer.py` | ✅ done |
 | 3 | GPT model (hand-written attention) | `model.py` | ✅ done |
-| 4 | Training loop on CPU | `train.py` | ⏳ next |
-| 5 | Sampling / generation | `sample.py` | |
+| 4 | Training loop | `train.py` | ✅ done |
+| 5 | Sampling / generation | `sample.py` | ⏳ next |
 
 Target model config (first run):
 
@@ -158,6 +160,74 @@ x = x + MLP(LayerNorm(x))         # each token processes on its own (compute)
 
 ---
 
+## Step 4: Training
+
+Run: `uv run python train.py` (options: `--max_iters`, `--batch_size`,
+`--resume`, `--device cpu`...). Saves the best model to `ckpt.pt` and the
+log to `train_log.csv`.
+
+### The loop
+```
+repeat:
+  x, y = random batch (16 snippets × 256 tokens; y = x shifted by one)
+  loss = model(x, y)        # forward: how wrong?
+  loss.backward()           # backward: gradient for every param
+  clip gradients to 1.0     # safety against one bad batch
+  optimizer.step()          # AdamW nudges every param
+```
+
+### Key ideas
+- **Gradient**: for each parameter, "which direction and how much would
+  reduce the loss". `loss.backward()` computes all 12.3M of them (backpropagation).
+- **Learning rate (lr)**: how big each nudge is. Warmup 0→1e-3 over 100
+  steps, then cosine decay to 1e-4.
+- **AdamW**: gradient descent + momentum + a per-parameter step size, plus weight decay (pull toward 0).
+- **Train vs val loss**: val is measured on stories the model never trains
+  on. If val rises while train falls, the model is memorising (**overfitting**).
+- **bfloat16 autocast** on GPU: 16-bit maths for about 2× speed. Weights stay 32-bit.
+
+### Hardware
+| device | tokens/sec | 3000 steps |
+|---|---|---|
+| CPU (16 cores) | ~5,500 | ~40 min |
+| RTX 3050 laptop | ~52,000 | **4.2 min** |
+| RTX 3090 (estimate) | ~150–250k | ~1 min |
+
+A remote GPU can't be used as `device="cuda"` from another PC. Training does
+hundreds of tiny GPU ops per step, and network latency would kill it. You send
+the whole *job* to the machine with the GPU instead (SSH / VS Code Remote).
+Multi-GPU training (DDP) works because each GPU runs its own full copy and
+they only exchange gradients once per step, over very fast links (NVLink
+~600 GB/s vs home LAN ~0.1 GB/s).
+
+### Run 1 results (12.3M params, vocab 4096, 3000 steps, 3050)
+| iter | train | val |
+|---|---|---|
+| 0 | 8.38 | 8.38 |
+| 250 | 3.54 | 3.52 |
+| 500 | 2.98 | 3.04 |
+| 1000 | 2.51 | 2.58 |
+| 1500 | 2.24 | 2.34 |
+| 2000 | 2.10 | 2.21 |
+| 2500 | 1.92 | 2.10 |
+| 3000 | 1.84 | 2.06 |
+
+Best val **2.034** (iter 2750). Sample at iter 3000:
+> Once upon a time, there was a blue bird named Baby. Baby was very big and
+> loved to fly. One day, Baby found a big, shiny rock. It was so shiny and
+> tasty. Baby said, "Let's use this rock to fill it with pretty
+
+Observations:
+- Grammar, names, dialogue in quotes and story structure ("One day...") all
+  learned from next-token prediction alone.
+- The logic is still weak ("a rock ... so shiny and **tasty**"). The model
+  knows which words fit, but not yet what makes sense.
+- **Train/val gap is opening** (1.84 vs 2.06). 3000 × 4096 = 12M tokens ≈
+  2.4 passes over our 5M-token training set, so it's starting to memorise.
+  **More data** (the full 2.2 GB TinyStories ≈ 550M tokens) is the next big lever.
+
+---
+
 ## Glossary
 
 - **token**: an integer ID for a chunk of text (a byte, a subword, or a word)
@@ -168,9 +238,14 @@ x = x + MLP(LayerNorm(x))         # each token processes on its own (compute)
 - **logits**: raw scores per vocab token before softmax
 - **softmax**: turns scores into probabilities that sum to 1
 - **loss**: how wrong the model is; training = making this go down
+- **gradient**: direction and size to nudge a parameter to reduce loss
+- **learning rate**: how big the nudges are
+- **overfitting**: memorising the training data instead of learning general patterns (val loss stops improving)
+- **checkpoint**: saved model weights (`ckpt.pt`)
 - **parameter**: a learned number (weight); the model size is the count of these
 
 ## Results log
 
 | date | step | config | params | train loss | val loss | notes |
 |---|---|---|---|---|---|---|
+| run 1 | 3000 | 6L 6H 384C, vocab 4096, B16 T256, lr 1e-3 | 12.3M | 1.84 | 2.06 (best 2.034) | RTX 3050, 4.2 min, valid split only (5M tok) |
