@@ -20,7 +20,7 @@ Goal: build a tiny GPT-style language model from scratch, trainable on a CPU,
 | 2 | BPE tokenizer from scratch | `tokenizer.py` | ✅ done |
 | 3 | GPT model (hand-written attention) | `model.py` | ✅ done |
 | 4 | Training loop | `train.py` | ✅ done |
-| 5 | Sampling / generation | `sample.py` | ⏳ next |
+| 5 | Sampling / generation | `sample.py` | ✅ done |
 
 Target model config (first run):
 
@@ -228,6 +228,41 @@ Observations:
 
 ---
 
+## Step 5: Sampling
+
+Run: `uv run python sample.py`, an interactive playground
+(`:probs`, `:temps`, `:t`, `:k`, `:n`). One-shot: `--prompt "..."`.
+
+### Generation loop
+1. model(prompt) → 4096 scores for the next token
+2. softmax → probabilities
+3. **pick** one token
+4. append it, repeat. Stop at `<|endoftext|>` or max_tokens.
+
+### The two dials
+- **temperature** T: divide scores by T before softmax.
+  T→0 = greedy (always the top token). T<1 = safer. T>1 = wilder.
+- **top_k**: keep only the k most likely tokens, so it never picks a 1-in-10,000 dud.
+
+### What the model believes (run 1)
+| after | top guesses |
+|---|---|
+| `Once upon a` | ` time` 99.9% (the model is certain) |
+| `The cat was very` | ` happy` 28%, ` sad` 20%, ` excited` 11%, ` surprised` 8%, ` hungry` 8%... (many good options) |
+
+It's certain where the text is fixed and spread out where there are real
+choices. That's why we *sample* rather than always taking the top token.
+
+### Temperature comparison, "Lily went to the park"
+- **0 (greedy)**: coherent but safe, and starts repeating ("She wanted to climb the tree. She tried to climb the tree...")
+- **0.5**: fluent, small logic slips ("The dog was very big and had many dogs")
+- **1.0**: more varied, less sensible ("pick the bird's bird to learn its heart")
+- **1.5**: grammar starts breaking down ("She liked Tom the park with her toys")
+
+Sweet spot ≈ **0.7–0.9** with top_k 50.
+
+---
+
 ## Glossary
 
 - **token**: an integer ID for a chunk of text (a byte, a subword, or a word)
@@ -242,6 +277,9 @@ Observations:
 - **learning rate**: how big the nudges are
 - **overfitting**: memorising the training data instead of learning general patterns (val loss stops improving)
 - **checkpoint**: saved model weights (`ckpt.pt`)
+- **temperature**: sharpens (<1) or flattens (>1) the next-token probabilities
+- **top-k**: sample only from the k most likely tokens
+- **greedy decoding**: always pick the most likely token (temperature 0)
 - **parameter**: a learned number (weight); the model size is the count of these
 
 ## Results log
