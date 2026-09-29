@@ -15,8 +15,8 @@ Goal: build a tiny GPT-style language model from scratch, trainable on a CPU,
 | # | Step | File | Status |
 |---|------|------|--------|
 | 1 | Project setup + dataset | `data/download.py` | ✅ done |
-| 2 | BPE tokenizer from scratch | `tokenizer.py` | ⏳ next |
-| 3 | GPT model (hand-written attention) | `model.py` | |
+| 2 | BPE tokenizer from scratch | `tokenizer.py` | ✅ done |
+| 3 | GPT model (hand-written attention) | `model.py` | ⏳ next |
 | 4 | Training loop on CPU | `train.py` | |
 | 5 | Sampling / generation | `sample.py` | |
 
@@ -56,13 +56,40 @@ the pipeline works.
 
 ## Step 2: BPE tokenizer
 
-_(to do)_
+Run: `python tokenizer.py` trains the tokenizer, saves `tokenizer.json`, and
+writes `data/train.bin` + `data/val.bin` (uint16 token ids).
 
-Key ideas to cover:
-- why bytes (256 base tokens) instead of characters (any text can be encoded, nothing is unknown)
-- pre-splitting into words so merges don't cross word boundaries
-- training loop: count adjacent pairs → merge the most frequent → repeat
-- encode / decode, special tokens
+### How BPE works
+1. **Start with bytes.** Text in UTF-8 is a sequence of bytes 0–255, giving
+   256 base tokens. Any text can be encoded and nothing is ever "unknown".
+2. **Count adjacent pairs** across the training text.
+3. **Merge the most frequent pair** into a new token id (256, 257, ...).
+4. **Repeat** until vocab = 4096 (256 bytes + 3839 merges + 1 special).
+
+### Key ideas
+- **Pre-splitting (GPT-2 regex):** text is chopped into word-like chunks first
+  and merges only happen *inside* a chunk, so there's no junk like `"dog."`.
+  The leading space is part of the word: `" dog"` ≠ `"dog"`.
+- **Speed trick:** count each distinct chunk once. 2.4M chunks collapse to
+  only ~10k distinct ones, so training takes 26 s in pure Python.
+- **Encoding** replays merges in the order they were learned (earliest first).
+- **Special token** `<|endoftext|>` = id 4095, marks story boundaries.
+- `uint16` storage works because 4096 < 65,536 (2 bytes per token).
+
+### Results
+- First merges: `" t"`, `"he"`, `" a"`, `" s"`, `" w"`, then `" the"` (built from the first two), `"nd"`, `"ed"`, `" and"`...
+  Common English pieces appear first, which is what you'd expect.
+- Later merges are whole words: `" children"`, `" perfume"`, `" church"`.
+- Example: `"Once upon a time, there was a little dog named Max."` = 13 tokens,
+  one per word/punctuation mark.
+- Emoji 😀 isn't in the vocab, so it falls back to its 4 raw bytes.
+  That's the benefit of byte-level BPE: nothing breaks.
+- **3.99 chars/token.** Dataset = 5.07M train tokens + 0.57M val tokens.
+
+### Why vocab 4096 and not 50k like GPT-2?
+The embedding table is `vocab_size × n_embd` params. At n_embd=256:
+50k vocab = 12.8M params just for embeddings. 4k vocab = 1M. For a tiny
+model on simple text, the params are better spent on transformer layers.
 
 ---
 
@@ -71,6 +98,8 @@ Key ideas to cover:
 - **token**: an integer ID for a chunk of text (a byte, a subword, or a word)
 - **vocab_size**: number of distinct tokens
 - **context / block_size**: how many tokens the model sees at once
+- **BPE**: byte-pair encoding, which builds a vocab by repeatedly merging frequent pairs
+- **special token**: a reserved id with meaning (e.g. end of story), never produced by merges
 - **parameter**: a learned number (weight); the model size is the count of these
 
 ## Results log
