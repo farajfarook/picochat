@@ -1,0 +1,22 @@
+[project]
+name = "picochat"
+version = "0.1.0"
+description = "A tiny GPT built from scratch, for learning"
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.6",
+    "numpy",
+    "regex",
+]
+
+# Get PyTorch from NVIDIA-CUDA builds instead of the default CPU-only build on PyPI
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true  # only use this index for torch, everything else from PyPI
+
+[tool.uv]
+package = false  # this is a set of scripts, not an installable library
