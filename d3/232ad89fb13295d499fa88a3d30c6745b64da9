@@ -1,0 +1,19 @@
+train.py
+  s_111dee8003d6be::t_13958b1ae38157 187,210,221,225-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d3232ad89fb13295d499fa88a3d30c6745b64da9",
+  "prompts": {},
+  "sessions": {
+    "s_111dee8003d6be": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed99-9cb9-75ab-9ba3-fcad45955438",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Faraj Farook <farajf@proton.me>"
+    }
+  }
+}
