@@ -1,0 +1,20 @@
+train.py
+  s_111dee8003d6be::t_16b14c0464d5c6 81-84,171,182,229
+  s_111dee8003d6be::t_1a580b994ca629 75,78-80,85-86,106,123,169-170,172,181,183,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "013793cf0aac7c1ca769737b30afa91690acfd1e",
+  "prompts": {},
+  "sessions": {
+    "s_111dee8003d6be": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed99-9cb9-75ab-9ba3-fcad45955438",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Faraj Farook <farajf@proton.me>"
+    }
+  }
+}
