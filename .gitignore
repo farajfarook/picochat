@@ -1,0 +1,5 @@
+data/*.txt
+data/*.bin
+*.pt
+__pycache__/
+.venv/
