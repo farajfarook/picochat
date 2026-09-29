@@ -72,7 +72,17 @@ p.add_argument("--eval_iters", type=int, default=20)     # batches used to estim
 p.add_argument("--out", default="ckpt.pt")
 p.add_argument("--resume", action="store_true")
 p.add_argument("--seed", type=int, default=1337)
+p.add_argument("--device", default="auto", help="auto | cpu | cuda")
 args = p.parse_args()
+
+# GPU if available (and PyTorch was installed with CUDA), otherwise CPU
+device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+# on GPU, do the heavy maths in bfloat16 (16-bit numbers): about 2x faster, same results in practice
+def autocast():
+    if device == "cuda":
+        return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    return torch.autocast(device_type="cpu", enabled=False)  # CPU: plain 32-bit maths
+print(f"device: {device}" + (f" ({torch.cuda.get_device_name()})" if device == "cuda" else ""))
 
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
@@ -93,7 +103,7 @@ def get_batch(split):
     ix = np.random.randint(0, len(data) - T - 1, args.batch_size)
     x = torch.from_numpy(np.stack([data[i:i + T] for i in ix]).astype(np.int64))
     y = torch.from_numpy(np.stack([data[i + 1:i + T + 1] for i in ix]).astype(np.int64))
-    return x, y
+    return x.to(device), y.to(device)
 
 
 # ------------------------------------------------------------------ model
@@ -110,6 +120,7 @@ else:
                     n_layer=args.n_layer, n_head=args.n_head,
                     n_embd=args.n_embd, dropout=args.dropout)
     model = GPT(cfg)
+model.to(device)
 print(f"model: {model.num_params()/1e6:.1f}M params | {cfg}")
 print(f"data: {len(train_data):,} train tokens, {len(val_data):,} val tokens")
 tokens_per_step = args.batch_size * args.block_size
@@ -155,7 +166,10 @@ def estimate_loss():
     model.eval()  # turns off dropout
     out = {}
     for split in ("train", "val"):
-        losses = [model(*get_batch(split))[1].item() for _ in range(args.eval_iters)]
+        losses = []
+        for _ in range(args.eval_iters):
+            with autocast():
+                losses.append(model(*get_batch(split))[1].item())
         out[split] = sum(losses) / len(losses)
     model.train()
     return out
@@ -164,8 +178,9 @@ def estimate_loss():
 @torch.no_grad()
 def sample(prompt="Once upon a time", n=60):
     model.eval()
-    idx = torch.tensor([tok.encode(prompt)])
-    out = model.generate(idx, n, temperature=0.8, top_k=50, stop_id=tok.eot_id)
+    idx = torch.tensor([tok.encode(prompt)], device=device)
+    with autocast():
+        out = model.generate(idx, n, temperature=0.8, top_k=50, stop_id=tok.eot_id)
     model.train()
     return tok.decode(out[0].tolist()).replace("\n", " ")
 
@@ -211,7 +226,8 @@ try:
 
         # --- one training step: forward -> backward -> step
         x, y = get_batch("train")
-        _, loss = model(x, y)            # 1. forward: how wrong are we?
+        with autocast():
+            _, loss = model(x, y)        # 1. forward: how wrong are we?
         optimizer.zero_grad()            #    (clear gradients from the last step)
         loss.backward()                  # 2. backward: compute gradients
         # gradient clipping: if a rare bad batch produces a huge gradient,
