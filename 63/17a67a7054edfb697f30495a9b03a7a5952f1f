@@ -1,0 +1,21 @@
+sample.py
+  s_111dee8003d6be::t_81eed3a581bda3 1-178
+NOTES.md
+  s_111dee8003d6be::t_4149e9c37e5468 23,231-265,280-282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6317a67a7054edfb697f30495a9b03a7a5952f1f",
+  "prompts": {},
+  "sessions": {
+    "s_111dee8003d6be": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed99-9cb9-75ab-9ba3-fcad45955438",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Faraj Farook <farajf@proton.me>"
+    }
+  }
+}
