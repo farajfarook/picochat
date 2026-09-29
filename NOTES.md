@@ -263,6 +263,33 @@ Sweet spot ≈ **0.7–0.9** with top_k 50.
 
 ---
 
+## Step 6: Scaling data
+
+`data/prepare.py` encodes the full 2.2 GB train split in parallel on all CPU
+cores (the file is cut at story boundaries, and 16 processes encode pieces at
+once). Encoding is text/dictionary work, so it runs on the CPU; GPUs only
+help with big uniform number-crunching.
+
+### Run 2: 12M model, full data, 15k steps (61M tokens, every batch new)
+| iter | train | val |
+|---|---|---|
+| 1500 | 2.36 | 2.36 |
+| 4500 | 1.96 | 1.95 |
+| 9000 | 1.72 | 1.69 |
+| 15000 | 1.57 | **1.55** |
+
+- val **2.03 → 1.55** from more data alone, same model
+- train ≈ val the whole way, so no memorising
+- still slowly improving at the end, so not saturated yet
+
+### Where does it saturate?
+Two limits: **model capacity** (a small model runs out of room, and more
+training stops helping) and **the data's own randomness** (a floor no model
+can go below). Test: train a bigger model on the same data. If it gets
+clearly lower, capacity was the limit.
+
+---
+
 ## Glossary
 
 - **token**: an integer ID for a chunk of text (a byte, a subword, or a word)
@@ -287,3 +314,4 @@ Sweet spot ≈ **0.7–0.9** with top_k 50.
 | date | step | config | params | train loss | val loss | notes |
 |---|---|---|---|---|---|---|
 | run 1 | 3000 | 6L 6H 384C, vocab 4096, B16 T256, lr 1e-3 | 12.3M | 1.84 | 2.06 (best 2.034) | RTX 3050, 4.2 min, valid split only (5M tok) |
+| run 2 | 15000 | same model, **full TinyStories** (470M tok) | 12.3M | 1.57 | 1.55 | RTX 3050, ~20 min; train≈val, no overfitting |
