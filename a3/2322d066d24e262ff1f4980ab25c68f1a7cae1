@@ -1,0 +1,19 @@
+NOTES.md
+  s_a548ea2eeb471c::t_665f417a407a5b 293-323,349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a32322d066d24e262ff1f4980ab25c68f1a7cae1",
+  "prompts": {},
+  "sessions": {
+    "s_a548ea2eeb471c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ede1-995a-75ab-9ba3-fcaed3cdc32f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Faraj Farook <farajf@proton.me>"
+    }
+  }
+}
