@@ -290,6 +290,37 @@ clearly lower, capacity was the limit.
 
 ---
 
+### Run 3: 27.4M model, full data, 85k steps overnight (~700M tokens)
+| iter | train | val |
+|---|---|---|
+| 2000 | 1.94 | 1.93 |
+| 10000 | 1.55 | 1.55 |
+| 20000 | 1.46 | 1.44 |
+| 40000 | 1.34 | 1.38 |
+| 60000 | 1.27 | 1.28 |
+| 85000 | 1.22 | **1.216** |
+
+- 12M → 27M on the same data: val **1.55 → 1.22**, a big drop, so **model
+  capacity was the limit** for the 12M model
+- train ≈ val throughout (~1.5 passes over the data), still no memorising
+- flattening at the end: the last 10k steps only went 1.24 → 1.22
+- stories now have a beginning, middle and end, cause and effect, and a
+  closing moral:
+
+> ...one day, they had a quarrel. They were both very angry and they started
+> to fight. Suddenly, the ground started to shake. It was an earthquake! ...
+> In the end, the earthquake stopped... Tom and Jane were happy, and they
+> hugged each other. They never wanted a quarrel again.
+
+### Scaling summary
+| run | params | data seen | val |
+|---|---|---|---|
+| 1 | 12.3M | 12M tok (5M unique, repeated) | 2.03 |
+| 2 | 12.3M | 61M tok (all new) | 1.55 |
+| 3 | 27.4M | 700M tok | **1.22** |
+
+---
+
 ## Glossary
 
 - **token**: an integer ID for a chunk of text (a byte, a subword, or a word)
@@ -315,3 +346,4 @@ clearly lower, capacity was the limit.
 |---|---|---|---|---|---|---|
 | run 1 | 3000 | 6L 6H 384C, vocab 4096, B16 T256, lr 1e-3 | 12.3M | 1.84 | 2.06 (best 2.034) | RTX 3050, 4.2 min, valid split only (5M tok) |
 | run 2 | 15000 | same model, **full TinyStories** (470M tok) | 12.3M | 1.57 | 1.55 | RTX 3050, ~20 min; train≈val, no overfitting |
+| run 3 | 85000 | **8L 8H 512C**, B32, lr 6e-4, full data (700M tok) | 27.4M | 1.22 | **1.216** | RTX 3050, ~8h overnight |
